@@ -67,6 +67,22 @@ const ItemCtrl = (function() {
     },
     getCurrentItem: function() {
       return data.currentItem;
+    },
+    updateItem: function(updateditemName, updatedItemCalories) {
+      data.items.forEach(function(item) {
+        if(item.id === data.currentItem.id) {
+          item.name = updateditemName;
+          item.calories = parseInt(updatedItemCalories);
+          ItemCtrl.setCurrentItem(item);
+        }
+      });
+      return ItemCtrl.getCurrentItem();
+    },
+    deleteItemData: function() {
+      data.items.splice(data.items.indexOf(data.currentItem), 1);
+    },
+    clearAllItemsData: function() {
+      data.items = [];
     }
   }
 })();
@@ -81,7 +97,7 @@ const UICtrl = (function() {
       updateBtn: '.update-btn',
       deleteBtn: '.delete-btn',
       backBtn: '.back-btn',
-      editBtn: '.edit-item',
+      clearAllBtn: '.clear-btn',
       itemNameInput: '#item-name',
       itemCaloriesInput: '#item-calories',
       totalCaloriesOutput: '#total-calories'
@@ -147,12 +163,17 @@ const UICtrl = (function() {
       document.querySelector(UISelectors.totalCaloriesOutput).textContent = totalCalories;
     },
     clearEditState: function() {
+      //Clear UI input fields
       UICtrl.clearInput();
+
       //Hiding update, delete & back buttons from UI
       document.querySelector(UISelectors.updateBtn).style.display = 'none';
       document.querySelector(UISelectors.deleteBtn).style.display = 'none';
       document.querySelector(UISelectors.backBtn).style.display = 'none';
       document.querySelector(UISelectors.addBtn).style.display = 'inline';
+
+      // Set current item to null in Item controller module
+      ItemCtrl.setCurrentItem(null);
     },
     showEditItemInInput: function() {
       // Show edit item name and calories in input fields
@@ -167,6 +188,20 @@ const UICtrl = (function() {
       document.querySelector(UISelectors.deleteBtn).style.display = 'inline';
       document.querySelector(UISelectors.backBtn).style.display = 'inline';
       document.querySelector(UISelectors.addBtn).style.display = 'none';
+    },
+    showUpdatedItem: function(updatedItem) {
+      const editListItem = document.querySelector('#item-' + updatedItem.id);
+      editListItem.innerHTML = `
+        <strong>${updatedItem.name}: </strong><em>${updatedItem.calories} calories</em>
+        <a href="#" class="secondary-content"><i class="edit-item fa fa-pencil-alt"></i></a>
+      `;
+    },
+    deleteListItem: function() {
+      const editItemId = ItemCtrl.getCurrentItem().id;
+      document.querySelector('#item-' + editItemId).remove();
+    },
+    removeAllListItems: function() {
+      document.querySelector(UISelectors.itemList).innerHTML = '';
     }
   }
 })();
@@ -180,11 +215,37 @@ const App = (function(ItemCtrl, UICtrl) {
     // Get UI selectors from UI controller module
     const UISelectors = UICtrl.getUISelectors();
 
-    // Add meal event
+    // Disable submit on enter
+    document.addEventListener('keypress', function(e) {
+      if(e.key === 'Enter') {
+        e.preventDefault();
+        return false;
+      }
+    })
+
+    // Add meal button event
     document.querySelector(UISelectors.addBtn).addEventListener('click', itemAddSubmit);
     
-    // Edit item icon click
+    // Edit item icon click event
     document.querySelector(UISelectors.itemList).addEventListener('click', itemEditClick);
+    
+    // Edit state update button event
+    document.querySelector(UISelectors.updateBtn).addEventListener('click', itemEditSubmit);
+    
+    // Edit state delete button event
+    document.querySelector(UISelectors.deleteBtn).addEventListener('click', deleteItem);
+
+    // Edit state back button event
+    document.querySelector(UISelectors.backBtn).addEventListener('click', function(e) {
+
+      // Clear edit state
+      UICtrl.clearEditState();
+
+      e.preventDefault();
+    })
+
+    // Clear all button event
+    document.querySelector(UISelectors.clearAllBtn).addEventListener('click', clearAllItems);
     
   }
 
@@ -206,7 +267,7 @@ const App = (function(ItemCtrl, UICtrl) {
       // Show total calories in UI through UI controller module
       UICtrl.showTotalCalories(totalCalories);
 
-      // Clear Input fields
+      // Clear input fields
       UICtrl.clearInput();
     }
 
@@ -233,9 +294,72 @@ const App = (function(ItemCtrl, UICtrl) {
 
       // Show current item in edit state
       UICtrl.showEditItemInInput();
-
-
     }
+
+    e.preventDefault();
+  }
+
+  const itemEditSubmit = function(e) {
+    // Get edited data from UI controller module
+    const input = UICtrl.getItemInput();
+
+    // Check whether input data is null
+    if(input.name !== '' && input.calories !== '') {
+      // Add new item to data through Item controller module
+      const updatedItem = ItemCtrl.updateItem(input.name, input.calories);
+
+      // Get the UI list item for updated item id
+      UICtrl.showUpdatedItem(updatedItem);
+
+      // Get total calories from Item controller module
+      const totalCalories = ItemCtrl.getTotalCalories();
+
+      // Show total calories in UI through UI controller module
+      UICtrl.showTotalCalories(totalCalories);
+
+      // Clear edit state
+      UICtrl.clearEditState();   
+    }
+    e.preventDefault();
+  }
+
+  const deleteItem = function(e) {
+    // Delete item from data structure in Item controller module
+    ItemCtrl.deleteItemData();
+
+    // Remove corresponding list item from UI
+    UICtrl.deleteListItem();
+
+    // Get total calories from Item controller module
+    const totalCalories = ItemCtrl.getTotalCalories();
+
+    // Show total calories in UI through UI controller module
+    UICtrl.showTotalCalories(totalCalories);
+
+    // Clear edit state
+    UICtrl.clearEditState();
+
+    e.preventDefault();
+  }
+
+  const clearAllItems = function(e) {
+    // Clear all items from data structure in Item controller module
+    ItemCtrl.clearAllItemsData();
+
+    // Clear all list items from UI
+    UICtrl.removeAllListItems();
+
+    // Get total calories from Item controller module
+    const totalCalories = ItemCtrl.getTotalCalories();
+
+    // Show total calories in UI through UI controller module
+    UICtrl.showTotalCalories(totalCalories);
+
+    // Clear edit state
+    UICtrl.clearEditState();
+
+    // Hide UI list item collection
+    UICtrl.hideList();
 
     e.preventDefault();
   }
